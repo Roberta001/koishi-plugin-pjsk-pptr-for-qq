@@ -1,0 +1,22 @@
+{
+  "name": "koishi-plugin-pjsk-pptr-for-qq",
+  "description": "Koishi 的 Project SEKAI 表情包绘制插件，但是额外支持了原生md和mqqapi",
+  "version": "0.0.1",
+  "main": "lib/index.js",
+  "typings": "lib/index.d.ts",
+  "files": [
+    "lib",
+    "dist"
+  ],
+  "license": "MIT",
+  "scripts": {},
+  "keywords": [
+    "chatbot",
+    "koishi",
+    "plugin"
+  ],
+  "devDependencies": {},
+  "peerDependencies": {
+    "koishi": "4.18.11"
+  }
+}
