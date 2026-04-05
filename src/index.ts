@@ -344,15 +344,44 @@ export function apply(ctx: Context, config: Config) {
       if (userRecord.length === 0) {
         return await sendMessage(session, `抱歉，您尚未绘制过表情包。`, `随机绘制 自选绘制`)
       }
-      if (isQQOfficialRobotMarkdownTemplateEnabled && session.platform === 'qq') {
-        return await sendMessage(session, `您当前可以调整的项目有：
-1. 修改文本内容
-2. 调整字体大小
-3. 调整行间距
-4. 开启/关闭文本曲线
-5. 调整文本位置
-6. 修改表情包角色`, `修改文本 调整字体 调整行间距 文本曲线 调整位置 修改角色 随机角色`)
+
+      if (session.platform === 'qq' && (config.enableQQNativeMarkdown || config.isEnableQQOfficialRobotMarkdownTemplate)) {
+        const lastRecord = userRecord[0];
+        const characterName = characters[lastRecord.characterId]?.character || `未知(${lastRecord.characterId})`;
+        const textStr = lastRecord.text.substring(0, 10).replace(/\r\n|\n/g, ' ') + (lastRecord.text.length > 10 ? '...' : '');
+
+        let md = `❖ **PJSK 表情控制台**\n`;
+        md += `> 角色：${characterName}\n`;
+        md += `> 文本：${textStr}\n\n`;
+        md += `---\n`;
+
+        const cmdText = encodeURIComponent('/pjsk.调整.文本 ');
+        const cmdChara = encodeURIComponent('/pjsk.调整.角色 ');
+        const cmdUp = encodeURIComponent('/pjsk.调整.位置.上');
+        const cmdDown = encodeURIComponent('/pjsk.调整.位置.下');
+        const cmdLeft = encodeURIComponent('/pjsk.调整.位置.左');
+        const cmdRight = encodeURIComponent('/pjsk.调整.位置.右');
+        const cmdFontUp = encodeURIComponent('/pjsk.调整.字体.大');
+        const cmdFontDown = encodeURIComponent('/pjsk.调整.字体.小');
+        const cmdSpaceUp = encodeURIComponent('/pjsk.调整.行间距.大');
+        const cmdSpaceDown = encodeURIComponent('/pjsk.调整.行间距.小');
+        const cmdCurveOn = encodeURIComponent('/pjsk.调整.文本曲线.开启');
+        const cmdCurveOff = encodeURIComponent('/pjsk.调整.文本曲线.关闭');
+
+        md += `| ▤ 内容与角色 | ⌖ 位置微调 |\n`;
+        md += `| --- | --- |\n`;
+        md += `| [✎ 修改内容](mqqapi://aio/inlinecmd?command=${cmdText}&reply=false&enter=false) | [▲ 向上移动](mqqapi://aio/inlinecmd?command=${cmdUp}&reply=false&enter=true) |\n`;
+        md += `| [♙ 切换角色](mqqapi://aio/inlinecmd?command=${cmdChara}&reply=false&enter=false) | [▼ 向下移动](mqqapi://aio/inlinecmd?command=${cmdDown}&reply=false&enter=true) |\n`;
+        md += `| **⚙ 外观字体** | [◀ 向左移动](mqqapi://aio/inlinecmd?command=${cmdLeft}&reply=false&enter=true) |\n`;
+        md += `| [＋ 放大字体](mqqapi://aio/inlinecmd?command=${cmdFontUp}&reply=false&enter=true) | [▶ 向右移动](mqqapi://aio/inlinecmd?command=${cmdRight}&reply=false&enter=true) |\n`;
+        md += `| [－ 缩小字体](mqqapi://aio/inlinecmd?command=${cmdFontDown}&reply=false&enter=true) | **✂ 其它功能** |\n`;
+        md += `| [⇕ 增加行距](mqqapi://aio/inlinecmd?command=${cmdSpaceUp}&reply=false&enter=true) | [⌒ 开启弯曲](mqqapi://aio/inlinecmd?command=${cmdCurveOn}&reply=false&enter=true) |\n`;
+        md += `| [↕ 减小行距](mqqapi://aio/inlinecmd?command=${cmdSpaceDown}&reply=false&enter=true) | [─ 关闭弯曲](mqqapi://aio/inlinecmd?command=${cmdCurveOff}&reply=false&enter=true) |`;
+
+        session['seq'] = session['seq'] || 0;
+        return await sendQQNativeMarkdown(session, ++session['seq'], md);
       }
+
       return await sendMessage(session, `请使用以下指令调整表情包：
 > pjsk.调整.文本 [文本内容] - 修改文本
 > pjsk.调整.字体.大 - 字体变大
@@ -382,7 +411,7 @@ export function apply(ctx: Context, config: Config) {
       const {
         fontSize, curve, characterId, x, y, spaceSize, rotate
       } = userRecord[0]
-      await session.execute(`pjsk.绘制 -n ${characterId}${curve ? ` -c` : ''} ${textContent}`)
+      await session.execute(`pjsk.绘制 -d -n ${characterId}${curve ? ` -c` : ''} ${textContent}`)
     })
 
   // tz* zt*
@@ -414,7 +443,7 @@ export function apply(ctx: Context, config: Config) {
       const {
         text, curve, characterId, x, y, spaceSize, rotate
       } = userRecord[0]
-      await session.execute(`pjsk.绘制 --daf -n ${characterId} -s ${fontSize + 5} -x ${x} -y ${y} -l ${spaceSize}${curve ? ` -c` : ''} ${text}`)
+      await session.execute(`pjsk.绘制 -d --daf -n ${characterId} -s ${fontSize + 5} -x ${x} -y ${y} -l ${spaceSize}${curve ? ` -c` : ''} ${text}`)
     })
 
   // tz* zt*
@@ -429,7 +458,7 @@ export function apply(ctx: Context, config: Config) {
       const {
         text, curve, characterId, x, y, spaceSize, rotate
       } = userRecord[0]
-      await session.execute(`pjsk.绘制 --daf -n ${characterId} -s ${fontSize - 5} -x ${x} -y ${y} -l ${spaceSize}${curve ? ` -c` : ''} ${text}`)
+      await session.execute(`pjsk.绘制 -d --daf -n ${characterId} -s ${fontSize - 5} -x ${x} -y ${y} -l ${spaceSize}${curve ? ` -c` : ''} ${text}`)
     })
 
   // tz* hjj*
@@ -461,7 +490,7 @@ export function apply(ctx: Context, config: Config) {
       const {
         text, curve, characterId, x, y, fontSize, rotate
       } = userRecord[0]
-      await session.execute(`pjsk.绘制 --daf -n ${characterId} -s ${fontSize} -x ${x} -y ${y} -l ${spaceSize + 5}${curve ? ` -c` : ''} ${text}`)
+      await session.execute(`pjsk.绘制 -d --daf -n ${characterId} -s ${fontSize} -x ${x} -y ${y} -l ${spaceSize + 5}${curve ? ` -c` : ''} ${text}`)
     })
 
   // tz* hjj*
@@ -476,7 +505,7 @@ export function apply(ctx: Context, config: Config) {
       const {
         text, curve, characterId, x, y, fontSize, rotate
       } = userRecord[0]
-      await session.execute(`pjsk.绘制 --daf -n ${characterId} -s ${fontSize} -x ${x} -y ${y} -l ${spaceSize - 5}${curve ? ` -c` : ''} ${text}`)
+      await session.execute(`pjsk.绘制 -d --daf -n ${characterId} -s ${fontSize} -x ${x} -y ${y} -l ${spaceSize - 5}${curve ? ` -c` : ''} ${text}`)
     })
 
   // tz* wbqx* qx*
@@ -507,7 +536,7 @@ export function apply(ctx: Context, config: Config) {
       const {
         text, fontSize, characterId, x, y, spaceSize, rotate
       } = userRecord[0]
-      await session.execute(`pjsk.绘制 -n ${characterId} -c ${text}`)
+      await session.execute(`pjsk.绘制 -d -n ${characterId} -c ${text}`)
     })
 
   // tz* wbqx* qx*
@@ -521,7 +550,7 @@ export function apply(ctx: Context, config: Config) {
       const {
         text, fontSize, characterId, x, y, spaceSize, rotate
       } = userRecord[0]
-      await session.execute(`pjsk.绘制 -n ${characterId} ${text}`)
+      await session.execute(`pjsk.绘制 -d -n ${characterId} ${text}`)
     })
 
   // tz* wz*
@@ -557,7 +586,7 @@ export function apply(ctx: Context, config: Config) {
       const {
         text, fontSize, curve, characterId, x, spaceSize, rotate
       } = userRecord[0]
-      await session.execute(`pjsk.绘制 --daf -n ${characterId} -s ${fontSize} -x ${x} -y ${y - 20} -l ${spaceSize}${curve ? ` -c` : ''} ${text}`)
+      await session.execute(`pjsk.绘制 -d --daf -n ${characterId} -s ${fontSize} -x ${x} -y ${y - 20} -l ${spaceSize}${curve ? ` -c` : ''} ${text}`)
     })
 
   // tz* wz*
@@ -572,7 +601,7 @@ export function apply(ctx: Context, config: Config) {
       const {
         text, fontSize, curve, characterId, x, spaceSize, rotate
       } = userRecord[0]
-      await session.execute(`pjsk.绘制 --daf -n ${characterId} -s ${fontSize} -x ${x} -y ${y + 20} -l ${spaceSize}${curve ? ` -c` : ''} ${text}`)
+      await session.execute(`pjsk.绘制 -d --daf -n ${characterId} -s ${fontSize} -x ${x} -y ${y + 20} -l ${spaceSize}${curve ? ` -c` : ''} ${text}`)
     })
 
   // tz* wz*
@@ -587,7 +616,7 @@ export function apply(ctx: Context, config: Config) {
       const {
         text, fontSize, curve, characterId, y, spaceSize, rotate
       } = userRecord[0]
-      await session.execute(`pjsk.绘制 --daf -n ${characterId} -s ${fontSize} -x ${x - 20} -y ${y} -l ${spaceSize}${curve ? ` -c` : ''} ${text}`)
+      await session.execute(`pjsk.绘制 -d --daf -n ${characterId} -s ${fontSize} -x ${x - 20} -y ${y} -l ${spaceSize}${curve ? ` -c` : ''} ${text}`)
     })
 
   // tz* wz*
@@ -602,7 +631,7 @@ export function apply(ctx: Context, config: Config) {
       const {
         text, fontSize, curve, characterId, y, spaceSize, rotate
       } = userRecord[0]
-      await session.execute(`pjsk.绘制 --daf -n ${characterId} -s ${fontSize} -x ${x + 20} -y ${y} -l ${spaceSize}${curve ? ` -c` : ''} ${text}`)
+      await session.execute(`pjsk.绘制 -d --daf -n ${characterId} -s ${fontSize} -x ${x + 20} -y ${y} -l ${spaceSize}${curve ? ` -c` : ''} ${text}`)
     })
 
   // tz* jx*
@@ -626,7 +655,7 @@ export function apply(ctx: Context, config: Config) {
       const {
         text, fontSize, curve, x, y, spaceSize, rotate
       } = userRecord[0]
-      await session.execute(`pjsk.绘制 --daf -n ${characterId} -s ${fontSize} -x ${x} -y ${y} -l ${spaceSize}${curve ? ` -c` : ''} ${text}`)
+      await session.execute(`pjsk.绘制 -d --daf -n ${characterId} -s ${fontSize} -x ${x} -y ${y} -l ${spaceSize}${curve ? ` -c` : ''} ${text}`)
     })
 
   // hz*
@@ -639,6 +668,7 @@ export function apply(ctx: Context, config: Config) {
     .option('spaceSize', '-l [spaceSize:number] 文本上下行间距', {fallback: 18})
     .option('curve', '-c 是否启用文本曲线', {fallback: false})
     .option('disableAdaptiveFunctionality', '--daf 关闭自适应功能', {hidden: true, fallback: false})
+    .option('showDashboard', '-d 显示调整面板', {hidden: true, fallback: false})
     .action(async ({session, options}, inputText) => {
 
       // 表情包 ID 必须在 characters 的元素个数之内，即小于 characters.length，默认为随机
@@ -738,8 +768,13 @@ export function apply(ctx: Context, config: Config) {
           session['seq'] = session['seq'] || 0;
           const msgSeq = ++session['seq'];
           
+          if (options.showDashboard) {
+            await session.execute('pjsk.调整');
+            return;
+          }
+
           let trailingMd = ``;
-          trailingMd += `[[更改内容]](mqqapi://aio/inlinecmd?command=${encodeURIComponent('/pjsk.绘制 -n '+characterId+' ')}&reply=false&enter=false)   `;
+          trailingMd += `[[更改内容]](mqqapi://aio/inlinecmd?command=${encodeURIComponent('/pjsk.调整')}&reply=false&enter=true)   `;
           trailingMd += `[[🎲 随机绘制]](mqqapi://aio/inlinecmd?command=${encodeURIComponent('/pjsk.绘制')}&reply=false&enter=true)   `;
           trailingMd += `[[返回菜单]](mqqapi://aio/inlinecmd?command=${encodeURIComponent('/pjsk')}&reply=false&enter=true)`;
 
