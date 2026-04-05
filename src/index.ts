@@ -368,15 +368,21 @@ export function apply(ctx: Context, config: Config) {
         const cmdCurveOn = encodeURIComponent('/pjsk.调整.文本曲线.开启');
         const cmdCurveOff = encodeURIComponent('/pjsk.调整.文本曲线.关闭');
 
-        md += `| ▤ 内容与角色 | ⌖ 位置微调 |\n`;
+        md += `| ◎ 更改内容 | 　 |\n`;
         md += `| --- | --- |\n`;
-        md += `| [✎ 修改内容](mqqapi://aio/inlinecmd?command=${cmdText}&reply=false&enter=false) | [▲ 向上移动](mqqapi://aio/inlinecmd?command=${cmdUp}&reply=false&enter=true) |\n`;
-        md += `| [♙ 切换角色](mqqapi://aio/inlinecmd?command=${cmdChara}&reply=false&enter=false) | [▼ 向下移动](mqqapi://aio/inlinecmd?command=${cmdDown}&reply=false&enter=true) |\n`;
-        md += `| **⚙ 外观字体** | [◀ 向左移动](mqqapi://aio/inlinecmd?command=${cmdLeft}&reply=false&enter=true) |\n`;
-        md += `| [＋ 放大字体](mqqapi://aio/inlinecmd?command=${cmdFontUp}&reply=false&enter=true) | [▶ 向右移动](mqqapi://aio/inlinecmd?command=${cmdRight}&reply=false&enter=true) |\n`;
-        md += `| [－ 缩小字体](mqqapi://aio/inlinecmd?command=${cmdFontDown}&reply=false&enter=true) | **✂ 其它功能** |\n`;
-        md += `| [⇕ 增加行距](mqqapi://aio/inlinecmd?command=${cmdSpaceUp}&reply=false&enter=true) | [⌒ 开启弯曲](mqqapi://aio/inlinecmd?command=${cmdCurveOn}&reply=false&enter=true) |\n`;
-        md += `| [↕ 减小行距](mqqapi://aio/inlinecmd?command=${cmdSpaceDown}&reply=false&enter=true) | [─ 关闭弯曲](mqqapi://aio/inlinecmd?command=${cmdCurveOff}&reply=false&enter=true) |`;
+        md += `| [✎ 修改文字](mqqapi://aio/inlinecmd?command=${cmdText}&reply=false&enter=false) | [♙ 切换角色](mqqapi://aio/inlinecmd?command=${cmdChara}&reply=false&enter=false) |\n\n`;
+
+        md += `| ✥ 位置微调 | 　 |\n`;
+        md += `| --- | --- |\n`;
+        md += `| [▲ 向上移动](mqqapi://aio/inlinecmd?command=${cmdUp}&reply=false&enter=true) | [▼ 向下移动](mqqapi://aio/inlinecmd?command=${cmdDown}&reply=false&enter=true) |\n`;
+        md += `| [◀ 向左移动](mqqapi://aio/inlinecmd?command=${cmdLeft}&reply=false&enter=true) | [▶ 向右移动](mqqapi://aio/inlinecmd?command=${cmdRight}&reply=false&enter=true) |\n\n`;
+
+        md += `| ◧ 外观与字体 | ◨ 特殊效果 |\n`;
+        md += `| --- | --- |\n`;
+        md += `| [＋ 放大字体](mqqapi://aio/inlinecmd?command=${cmdFontUp}&reply=false&enter=true) | [⌒ 开启弯曲](mqqapi://aio/inlinecmd?command=${cmdCurveOn}&reply=false&enter=true) |\n`;
+        md += `| [－ 缩小字体](mqqapi://aio/inlinecmd?command=${cmdFontDown}&reply=false&enter=true) | [─ 关闭弯曲](mqqapi://aio/inlinecmd?command=${cmdCurveOff}&reply=false&enter=true) |\n`;
+        md += `| [⇕ 增加行距](mqqapi://aio/inlinecmd?command=${cmdSpaceUp}&reply=false&enter=true) | 　 |\n`;
+        md += `| [↕ 减小行距](mqqapi://aio/inlinecmd?command=${cmdSpaceDown}&reply=false&enter=true) | 　 |`;
 
         session['seq'] = session['seq'] || 0;
         return await sendQQNativeMarkdown(session, ++session['seq'], md);
