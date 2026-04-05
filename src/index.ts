@@ -126,6 +126,26 @@ interface Button {
   };
 }
 
+function getImgDimensions(imgPath: string, targetHeight: number = 33): { w: number, h: number } {
+  let fd;
+  try {
+    fd = fs.openSync(imgPath, 'r');
+    const buffer = Buffer.alloc(24);
+    fs.readSync(fd, buffer, 0, 24, 0);
+    if (buffer.toString('utf8', 1, 4) === 'PNG') {
+      const width = buffer.readUInt32BE(16);
+      const height = buffer.readUInt32BE(20);
+      return { w: Math.round(width * (targetHeight / height)), h: Math.round(targetHeight) };
+    }
+  } catch (e) {
+  } finally {
+    if (fd !== undefined) {
+      try { fs.closeSync(fd); } catch (e) {}
+    }
+  }
+  return { w: Math.round(targetHeight), h: Math.round(targetHeight) };
+}
+
 export function apply(ctx: Context, config: Config) {
   // tzb*
   ctx.model.extend('pjsk', {
@@ -186,37 +206,104 @@ export function apply(ctx: Context, config: Config) {
   const characters = JSON.parse(fs.readFileSync(path.join(__dirname, 'assets', 'characters.json'), 'utf8'))
 
   // pjsk* h* bz*
+  const baseCdn = 'https://pjsk.vocaloid.world/';
+
+  ctx.command('testimg', '测试图片上传和缓存')
+    .action(async ({session}) => {
+       const imgPath = path.join(__dirname, 'assets', 'img', 'airi', 'Airi_01.png');
+       const buffer = fs.readFileSync(imgPath);
+       const [messageId] = await session.send(h.image(buffer, 'image/png'));
+       
+       await session.send('已发送单张测试图，正在回抓该图片对应的腾讯底层 qpic URL...');
+       try {
+           const msg = await session.bot.getMessage(session.channelId, messageId);
+           const imgEls = h.select(msg.elements, 'img');
+           if (imgEls.length > 0) {
+              const url = imgEls[0].attrs.src;
+              await session.send(`获取到的腾讯直链: \n${url}\n正在下发 Markdown 测试该直链的渲染和微缩能力...`);
+              
+              session['seq'] = session['seq'] || 0;
+              const md = `测试内部 qpic 渲染:\n![test #40px #40px](${url}) [[+]](mqqapi://aio/inlinecmd?command=123&reply=false&enter=false)`;
+              await sendQQNativeMarkdown(session, ++session['seq'], md);
+           } else {
+              await session.send('无法在提取的消息中找到 img src 元素! elements dump: ' + JSON.stringify(msg.elements));
+           }
+       } catch (e) {
+           await session.send('获取消息报错: ' + String(e));
+       }
+    });
+
   ctx.command('pjsk', '初音未来表情包生成帮助')
     .action(async ({session}) => {
-      if (isQQOfficialRobotMarkdownTemplateEnabled && session.platform === 'qq') {
-        return await sendMessage(session, `🌸 初音未来表情包生成器 🌸
-😆 欢迎使用~ 祝您玩得开心！`, `表情包列表 随机绘制 自选绘制`)
+      if (session.platform === 'qq' && (config.enableQQNativeMarkdown || config.isEnableQQOfficialRobotMarkdownTemplate)) {
+        session['seq'] = session['seq'] || 0;
+        const botName = session.bot?.user?.name || session.bot?.user?.nick || '机器人';
+        const md = `PJSK表情制作使用方法:\n> 例: @${botName} /pjsk [角色]+[编号]+[内容]\n\n点击下方按钮进入功能引导:\n[😜 📝 选择角色与编号](mqqapi://aio/inlinecmd?command=${encodeURIComponent('/pjsk.角色列表')}&reply=false&enter=true)`;
+        await sendQQNativeMarkdown(session, ++session['seq'], md);
+        return;
       }
-      await session.execute(`pjsk -h`)
-    })
-  // lb*
-  ctx.command('pjsk.列表', '表情列表指令引导')
-    .action(async ({session}) => {
-      if (isQQOfficialRobotMarkdownTemplateEnabled && session.platform === 'qq') {
-        return await sendMessage(session, `当前可查看的表情包列表如下：
-1. 全部
-2. 角色分类
-3. 指定角色 [角色序号或角色名]`, `全部 角色分类 指定角色`)
-      }
-      // 提示当前可用的表情包列表
-      return await sendMessage(session, `请使用以下指令查看表情包列表：
-> pjsk.列表.全部 - 查看全部表情包列表
-> pjsk.列表.角色分类 - 查看角色分类表情包列表
-> pjsk.列表.展开指定角色 [角色序号或角色名] - 查看指定角色表情包列表`, ``)
-    })
+      await session.execute(`pjsk -h`);
+    });
 
-  // lb* qb*
-  ctx.command('pjsk.列表.全部', '全部表情列表')
+  ctx.command('pjsk.角色列表', 'PJSK 角色选择菜单')
     .action(async ({session}) => {
-      const buffer = fs.readFileSync(pjskListDir['pjskListForcharacterListAllDir']);
-      await sendMessage(session, h.image(buffer, 'image/jpeg'), ``, 863, 2245)
-      await processUserInput(session)
-    })
+      if (!(session.platform === 'qq' && (config.enableQQNativeMarkdown || config.isEnableQQOfficialRobotMarkdownTemplate))) {
+         return await session.send('该排版目前仅原生 QQ 平台支持。');
+      }
+      const uniqueCharacters = [];
+      const seenChara = new Set();
+      for (const c of characters) {
+        if (!seenChara.has(c.character)) {
+          seenChara.add(c.character);
+          uniqueCharacters.push({ character: c.character, img: c.img });
+        }
+      }
+      
+      let md = `PJSK角色选择菜单\n点击 [+] 并发送进行下一步~\n\n`;
+      let count = 0;
+      for (const u of uniqueCharacters) {
+        const url = `${baseCdn}${u.img}`;
+        const cmd = `/pjsk.子图列表 ${u.character}`;
+        const mqqapi = `mqqapi://aio/inlinecmd?command=${encodeURIComponent(cmd)}&reply=false&enter=true`;
+        const localImgPath = path.join(__dirname, 'assets', 'img', u.img);
+        const { w, h } = getImgDimensions(localImgPath, 35);
+        md += `![${u.character} #${w}px #${h}px](${url}) [[+]](${mqqapi})`;
+        count++;
+        if (count % 4 === 0) md += '\n\n'; else md += ' ';
+      }
+      session['seq'] = session['seq'] || 0;
+      await sendQQNativeMarkdown(session, ++session['seq'], md);
+    });
+
+  ctx.command('pjsk.子图列表 <character:string>', 'PJSK 子图选择菜单')
+    .action(async ({session}, character) => {
+      if (!(session.platform === 'qq' && (config.enableQQNativeMarkdown || config.isEnableQQOfficialRobotMarkdownTemplate))) return;
+      if (!character) return;
+      
+      const lowercaseCharacter = character.toLowerCase();
+      const filteredCharacters = characters.filter(c => c.character.toLowerCase() === lowercaseCharacter);
+      
+      if (filteredCharacters.length === 0) {
+        session['seq'] = session['seq'] || 0;
+        await sendQQNativeMarkdown(session, ++session['seq'], `找不到角色图像！`);
+        return;
+      }
+      
+      let md = `${character}子图选择菜单\n点击 [+] 并输入内容即可生成~\n\n`;
+      let count = 0;
+      for (const c of filteredCharacters) {
+        const url = `${baseCdn}${c.img}`;
+        const cmd = `/pjsk.绘制 -n ${characters.indexOf(c)} `;
+        const mqqapi = `mqqapi://aio/inlinecmd?command=${encodeURIComponent(cmd)}&reply=false&enter=false`;
+        const localImgPath = path.join(__dirname, 'assets', 'img', c.img);
+        const { w, h } = getImgDimensions(localImgPath, 36);
+        md += `![${c.name} #${w}px #${h}px](${url}) [[+]](${mqqapi})`;
+        count++;
+        if (count % 4 === 0) md += '\n\n'; else md += ' ';
+      }
+      session['seq'] = session['seq'] || 0;
+      await sendQQNativeMarkdown(session, ++session['seq'], md);
+    });
   // lb* js* fl*
   ctx.command('pjsk.列表.角色分类', '角色分类表情列表')
     .action(async ({session}) => {
@@ -646,9 +733,22 @@ export function apply(ctx: Context, config: Config) {
         })
       }
       const buffer = await draw(text, imgPath, specifiedX, specifiedY, specifiedRotate, specifiedFontSize, color, curve, spaceSize, angle)
-      await sendMessage(session, h.image(buffer, 'image/png'), ``, 296, 256)
-      if (isQQOfficialRobotMarkdownTemplateEnabled && session.platform === 'qq' || config.shouldSendSuccessMessageAfterDrawingEmoji) {
-        return await sendMessage(session, `🎉 表情包绘制完成！${!(isQQOfficialRobotMarkdownTemplateEnabled && session.platform === 'qq') ? `\n\n🔍 输入"pjsk.调整"获取调整指令\n或直接输入"pjsk.列表.角色分类"开始新的绘制\n\n✨ 期待您的下一个创作！` : ''}`, `修改文本 字体变大 字体变小 修改角色 行间距变大 行间距变小 随机角色 开启曲线 关闭曲线 随机绘制 文本上移 文本下移 自选绘制 文本左移 文本右移`)
+      await session.send(h.image(buffer, 'image/png'));
+      if (session.platform === 'qq' && (config.enableQQNativeMarkdown || config.isEnableQQOfficialRobotMarkdownTemplate)) {
+          session['seq'] = session['seq'] || 0;
+          const msgSeq = ++session['seq'];
+          
+          let trailingMd = ``;
+          trailingMd += `[[更改内容]](mqqapi://aio/inlinecmd?command=${encodeURIComponent('/pjsk.绘制 -n '+characterId+' ')}&reply=false&enter=false)   `;
+          trailingMd += `[[🎲 随机绘制]](mqqapi://aio/inlinecmd?command=${encodeURIComponent('/pjsk.绘制')}&reply=false&enter=true)   `;
+          trailingMd += `[[返回菜单]](mqqapi://aio/inlinecmd?command=${encodeURIComponent('/pjsk')}&reply=false&enter=true)`;
+
+          await sendQQNativeMarkdown(session, msgSeq, trailingMd);
+          return;
+      } else {
+         if (config.shouldSendSuccessMessageAfterDrawingEmoji) {
+            return await session.send(`🎉 表情包绘制完成！\n\n🔍 输入"pjsk.调整"获取调整指令\n或直接输入"pjsk.角色列表"开始新的绘制\n\n✨ 期待您的下一个创作！`);
+         }
       }
     })
 
@@ -1257,7 +1357,30 @@ export function apply(ctx: Context, config: Config) {
     return `\n\n> 💡 快捷操作：\n` + links.map(link => `> ${link}`).join('\n');
   }
 
-  async function sendMessage(session: any, message: any, markdownCommands: string, width?: number, height?: number): Promise<void> {
+    async function sendQQNativeMarkdown(session: any, msgSeq: number, markdownContent: string) {
+    const payload = {
+      msg_type: 2 as const,
+      msg_id: session.messageId,
+      msg_seq: msgSeq,
+      content: 'PJSK 呈现',
+      markdown: { content: markdownContent }
+    };
+    try {
+      if (session.isDirect) {
+        await session.qq.sendPrivateMessage(session.channelId, payload);
+      } else {
+        await session.qq.sendMessage(session.channelId, payload);
+      }
+    } catch (e: any) {
+      if (config.enableDetailedDebugLog) {
+         logger.error('MD发送失败:', e, e.response?.data);
+      } else {
+         logger.error('MD发送失败:', e.message || e);
+      }
+    }
+  }
+
+async function sendMessage(session: any, message: any, markdownCommands: string, width?: number, height?: number): Promise<void> {
     markdownCommands = markdownCommands || '';
     width = width || 296;
     height = height || 256;
