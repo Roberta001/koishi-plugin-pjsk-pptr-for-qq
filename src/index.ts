@@ -165,7 +165,7 @@ export function apply(ctx: Context, config: Config) {
   const isTemplateMDEnabled = config.isEnableQQOfficialRobotMarkdownTemplate && config.key !== '' && config.customTemplateId !== ''
   const isNativeMDEnabled = config.enableQQNativeMarkdown
   const isQQOfficialRobotMarkdownTemplateEnabled = isTemplateMDEnabled || isNativeMDEnabled
-  const filePath = path.join(__dirname, 'emptyHtml.html').replace(/\\/g, '/');
+  const filePath = path.join(__dirname, '../emptyHtml.html').replace(/\\/g, '/');
   const characterNames = [
     'characterListAll',
     'characterListWithIndex',
@@ -199,18 +199,18 @@ export function apply(ctx: Context, config: Config) {
   ];
   const pjskListDir: { [key: string]: string } = {};
   // wj*
-  const dependencyPjskDir = path.join(__dirname, 'assets')
+  const dependencyPjskDir = path.join(__dirname, '../assets')
   for (const name of characterNames) {
-    pjskListDir[`pjskListFor${name}Dir`] = path.join(__dirname, 'assets', 'list', `${name}.jpeg`);
+    pjskListDir[`pjskListFor${name}Dir`] = path.join(__dirname, '../assets', 'list', `${name}.jpeg`);
   }
-  const characters = JSON.parse(fs.readFileSync(path.join(__dirname, 'assets', 'characters.json'), 'utf8'))
+  const characters = JSON.parse(fs.readFileSync(path.join(__dirname, '../assets', 'characters.json'), 'utf8'))
 
   // pjsk* h* bz*
   const baseCdn = 'https://pjsk.vocaloid.world/';
 
   ctx.command('testimg', '测试图片上传和缓存')
     .action(async ({session}) => {
-       const imgPath = path.join(__dirname, 'assets', 'img', 'airi', 'Airi_01.png');
+       const imgPath = path.join(__dirname, '../assets', 'img', 'airi', 'Airi_01.png');
        const buffer = fs.readFileSync(imgPath);
        const [messageId] = await session.send(h.image(buffer, 'image/png'));
        
@@ -265,7 +265,7 @@ export function apply(ctx: Context, config: Config) {
         const url = `${baseCdn}${u.img}`;
         const cmd = `/pjsk.子图列表 ${u.character}`;
         const mqqapi = `mqqapi://aio/inlinecmd?command=${encodeURIComponent(cmd)}&reply=false&enter=true`;
-        const localImgPath = path.join(__dirname, 'assets', 'img', u.img);
+        const localImgPath = path.join(__dirname, '../assets', 'img', u.img);
         const { w, h } = getImgDimensions(localImgPath, 35);
         md += `![${u.character} #${w}px #${h}px](${url}) [[+]](${mqqapi})`;
         count++;
@@ -295,7 +295,7 @@ export function apply(ctx: Context, config: Config) {
         const url = `${baseCdn}${c.img}`;
         const cmd = `/pjsk.绘制 -n ${characters.indexOf(c)} `;
         const mqqapi = `mqqapi://aio/inlinecmd?command=${encodeURIComponent(cmd)}&reply=false&enter=false`;
-        const localImgPath = path.join(__dirname, 'assets', 'img', c.img);
+        const localImgPath = path.join(__dirname, '../assets', 'img', c.img);
         const { w, h } = getImgDimensions(localImgPath, 36);
         md += `![${c.name} #${w}px #${h}px](${url}) [[+]](${mqqapi})`;
         count++;

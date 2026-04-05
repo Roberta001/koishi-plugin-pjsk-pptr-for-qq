@@ -6,7 +6,9 @@
   "typings": "lib/index.d.ts",
   "files": [
     "lib",
-    "dist"
+    "dist",
+    "assets",
+    "emptyHtml.html"
   ],
   "license": "MIT",
   "keywords": [
