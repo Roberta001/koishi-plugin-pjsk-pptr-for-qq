@@ -15,7 +15,16 @@
     "koishi",
     "plugin"
   ],
-  "devDependencies": {},
+  "koishi": {
+    "service": {
+      "required": [
+        "puppeteer"
+      ]
+    }
+  },
+  "devDependencies": {
+    "koishi-plugin-puppeteer": "^3.9.0"
+  },
   "peerDependencies": {
     "koishi": "4.18.11"
   }
