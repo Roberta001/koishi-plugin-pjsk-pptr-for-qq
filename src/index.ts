@@ -209,32 +209,8 @@ export function apply(ctx: Context, config: Config) {
   // pjsk* h* bz*
   const baseCdn = 'https://pjsk.vocaloid.world/';
 
-  ctx.command('testimg', '测试图片上传和缓存')
-    .action(async ({session}) => {
-       const imgPath = path.join(__dirname, '../assets', 'img', 'airi', 'Airi_01.png');
-       const buffer = fs.readFileSync(imgPath);
-       const [messageId] = await session.send(h.image(buffer, 'image/png'));
-       
-       await session.send('已发送单张测试图，正在回抓该图片对应的腾讯底层 qpic URL...');
-       try {
-           const msg = await session.bot.getMessage(session.channelId, messageId);
-           const imgEls = h.select(msg.elements, 'img');
-           if (imgEls.length > 0) {
-              const url = imgEls[0].attrs.src;
-              await session.send(`获取到的腾讯直链: \n${url}\n正在下发 Markdown 测试该直链的渲染和微缩能力...`);
-              
-              session['seq'] = session['seq'] || 0;
-              const md = `测试内部 qpic 渲染:\n![test #40px #40px](${url}) [[+]](mqqapi://aio/inlinecmd?command=123&reply=false&enter=false)`;
-              await sendQQNativeMarkdown(session, ++session['seq'], md);
-           } else {
-              await session.send('无法在提取的消息中找到 img src 元素! elements dump: ' + JSON.stringify(msg.elements));
-           }
-       } catch (e) {
-           await session.send('获取消息报错: ' + String(e));
-       }
-    });
-
   ctx.command('pjsk', '初音未来表情包生成帮助')
+    .example('pjsk')
     .action(async ({session}) => {
       if (session.platform === 'qq' && (config.enableQQNativeMarkdown || config.isEnableQQOfficialRobotMarkdownTemplate)) {
         session['seq'] = session['seq'] || 0;
@@ -256,6 +232,7 @@ export function apply(ctx: Context, config: Config) {
     });
 
   ctx.command('pjsk.角色列表', 'PJSK 角色选择菜单')
+    .example('pjsk.角色列表')
     .action(async ({session}) => {
       if (!(session.platform === 'qq' && (config.enableQQNativeMarkdown || config.isEnableQQOfficialRobotMarkdownTemplate))) {
          return await session.send('该排版目前仅原生 QQ 平台支持。');
@@ -286,6 +263,7 @@ export function apply(ctx: Context, config: Config) {
     });
 
   ctx.command('pjsk.子图列表 <character:string>', 'PJSK 子图选择菜单')
+    .example('pjsk.子图列表 Airi')
     .action(async ({session}, character) => {
       if (!(session.platform === 'qq' && (config.enableQQNativeMarkdown || config.isEnableQQOfficialRobotMarkdownTemplate))) return;
       if (!character) return;
@@ -685,6 +663,10 @@ export function apply(ctx: Context, config: Config) {
 
   // hz*
   ctx.command('pjsk.绘制 [inputText:text]', '绘制表情包')
+    .usage('pjsk.绘制 <text>\npjsk.绘制 -n <id> <text>\npjsk.绘制 -n <id> -x <x> -y <y> <text>')
+    .example('pjsk.绘制 今天的烤肉真香啊')
+    .example('pjsk.绘制 -n 12 为什么要熬夜呢')
+    .example('pjsk.绘制 -n 18 -y 10 -c 真的绝望了')
     .option('number', '-n [number:number] 表情包ID', {fallback: undefined})
     .option('positionY', '-y [positionY:number] 文本的垂直位置', {fallback: undefined})
     .option('positionX', '-x [positionX:number] 文本的水平位置', {fallback: undefined})
