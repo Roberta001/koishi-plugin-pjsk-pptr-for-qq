@@ -6,7 +6,8 @@ import * as fs from "fs";
 
 export const name = 'pjsk-pptr'
 export const inject = {
-  required: ['puppeteer', 'database']
+  required: ['puppeteer', 'database'],
+  optional: ['server.temp']
 }
 export const usage = `
 ## 使用
@@ -238,8 +239,17 @@ export function apply(ctx: Context, config: Config) {
       if (session.platform === 'qq' && (config.enableQQNativeMarkdown || config.isEnableQQOfficialRobotMarkdownTemplate)) {
         session['seq'] = session['seq'] || 0;
         const botName = session.bot?.user?.name || session.bot?.user?.nick || '机器人';
-        const md = `PJSK表情制作使用方法:\n> 例: @${botName} /pjsk [角色]+[编号]+[内容]\n\n点击下方按钮进入功能引导:\n[😜 📝 选择角色与编号](mqqapi://aio/inlinecmd?command=${encodeURIComponent('/pjsk.角色列表')}&reply=false&enter=true)`;
-        await sendQQNativeMarkdown(session, ++session['seq'], md);
+        const md = `PJSK表情制作使用方法:\n> 例: @${botName} /pjsk [角色]+[编号]+[内容]\n\n> 🕹️ 请点击下方按钮进入功能引导：`;
+        const keyboard = {
+          content: {
+            rows: [{
+              buttons: [
+                { id: '1', render_data: { label: '😜 📝 选择角色与编号', style: 1 }, action: { type: 2, permission: { type: 2 }, data: '/pjsk.角色列表', enter: true } }
+              ]
+            }]
+          }
+        };
+        await sendQQNativeMarkdown(session, ++session['seq'], md, keyboard);
         return;
       }
       await session.execute(`pjsk -h`);
@@ -339,7 +349,8 @@ export function apply(ctx: Context, config: Config) {
 
   // tz*
   ctx.command('pjsk.调整', '调整指令引导')
-    .action(async ({session}, character) => {
+    .option('url', '-u [url:string] 附带服务器临时链接', {hidden: true})
+    .action(async ({session, options}, character) => {
       const userRecord = await ctx.database.get('pjsk', {userId: session.userId})
       if (userRecord.length === 0) {
         return await sendMessage(session, `抱歉，您尚未绘制过表情包。`, `随机绘制 自选绘制`)
@@ -351,41 +362,49 @@ export function apply(ctx: Context, config: Config) {
         const textStr = lastRecord.text.substring(0, 10).replace(/\r\n|\n/g, ' ') + (lastRecord.text.length > 10 ? '...' : '');
 
         let md = `❖ **PJSK 表情控制台**\n`;
+        if (options.url) {
+          md += `![image #296px #256px](${options.url})\n`;
+        }
         md += `> 角色：${characterName}\n`;
-        md += `> 文本：${textStr}\n\n`;
-        md += `---\n`;
+        md += `> 文本：${textStr}\n`;
 
-        const cmdText = encodeURIComponent('/pjsk.调整.文本 ');
-        const cmdChara = encodeURIComponent('/pjsk.调整.角色 ');
-        const cmdUp = encodeURIComponent('/pjsk.调整.位置.上');
-        const cmdDown = encodeURIComponent('/pjsk.调整.位置.下');
-        const cmdLeft = encodeURIComponent('/pjsk.调整.位置.左');
-        const cmdRight = encodeURIComponent('/pjsk.调整.位置.右');
-        const cmdFontUp = encodeURIComponent('/pjsk.调整.字体.大');
-        const cmdFontDown = encodeURIComponent('/pjsk.调整.字体.小');
-        const cmdSpaceUp = encodeURIComponent('/pjsk.调整.行间距.大');
-        const cmdSpaceDown = encodeURIComponent('/pjsk.调整.行间距.小');
-        const cmdCurveOn = encodeURIComponent('/pjsk.调整.文本曲线.开启');
-        const cmdCurveOff = encodeURIComponent('/pjsk.调整.文本曲线.关闭');
-
-        md += `| ◎ 更改内容 | 　 |\n`;
-        md += `| --- | --- |\n`;
-        md += `| [修改文字](mqqapi://aio/inlinecmd?command=${cmdText}&reply=false&enter=false) | [切换角色](mqqapi://aio/inlinecmd?command=${cmdChara}&reply=false&enter=false) |\n\n`;
-
-        md += `| ✥ 位置微调 | 　 |\n`;
-        md += `| --- | --- |\n`;
-        md += `| [向上移动](mqqapi://aio/inlinecmd?command=${cmdUp}&reply=false&enter=true) | [向下移动](mqqapi://aio/inlinecmd?command=${cmdDown}&reply=false&enter=true) |\n`;
-        md += `| [向左移动](mqqapi://aio/inlinecmd?command=${cmdLeft}&reply=false&enter=true) | [向右移动](mqqapi://aio/inlinecmd?command=${cmdRight}&reply=false&enter=true) |\n\n`;
-
-        md += `| ◧ 外观与字体 | ◨ 特殊效果 |\n`;
-        md += `| --- | --- |\n`;
-        md += `| [放大字体](mqqapi://aio/inlinecmd?command=${cmdFontUp}&reply=false&enter=true) | [开启弯曲](mqqapi://aio/inlinecmd?command=${cmdCurveOn}&reply=false&enter=true) |\n`;
-        md += `| [缩小字体](mqqapi://aio/inlinecmd?command=${cmdFontDown}&reply=false&enter=true) | [关闭弯曲](mqqapi://aio/inlinecmd?command=${cmdCurveOff}&reply=false&enter=true) |\n`;
-        md += `| [增加行距](mqqapi://aio/inlinecmd?command=${cmdSpaceUp}&reply=false&enter=true) | 　 |\n`;
-        md += `| [减小行距](mqqapi://aio/inlinecmd?command=${cmdSpaceDown}&reply=false&enter=true) | 　 |`;
+        const keyboard = {
+          content: {
+            rows: [
+              {
+                 buttons: [
+                   { id: '11', render_data: { label: '修改文字', style: 0 }, action: { type: 2, permission: { type: 2 }, data: '/pjsk.调整.文本 ', enter: false } },
+                   { id: '12', render_data: { label: '切换角色', style: 0 }, action: { type: 2, permission: { type: 2 }, data: '/pjsk.调整.角色 ', enter: false } }
+                 ]
+              },
+              {
+                 buttons: [
+                   { id: '21', render_data: { label: '上移', style: 1 }, action: { type: 2, permission: { type: 2 }, data: '/pjsk.调整.位置.上', enter: true } },
+                   { id: '22', render_data: { label: '下移', style: 1 }, action: { type: 2, permission: { type: 2 }, data: '/pjsk.调整.位置.下', enter: true } },
+                   { id: '23', render_data: { label: '左移', style: 1 }, action: { type: 2, permission: { type: 2 }, data: '/pjsk.调整.位置.左', enter: true } },
+                   { id: '24', render_data: { label: '右移', style: 1 }, action: { type: 2, permission: { type: 2 }, data: '/pjsk.调整.位置.右', enter: true } }
+                 ]
+              },
+              {
+                 buttons: [
+                   { id: '31', render_data: { label: '大字', style: 0 }, action: { type: 2, permission: { type: 2 }, data: '/pjsk.调整.字体.大', enter: true } },
+                   { id: '32', render_data: { label: '小字', style: 0 }, action: { type: 2, permission: { type: 2 }, data: '/pjsk.调整.字体.小', enter: true } },
+                   { id: '33', render_data: { label: '加行距', style: 0 }, action: { type: 2, permission: { type: 2 }, data: '/pjsk.调整.行间距.大', enter: true } },
+                   { id: '34', render_data: { label: '减行距', style: 0 }, action: { type: 2, permission: { type: 2 }, data: '/pjsk.调整.行间距.小', enter: true } }
+                 ]
+              },
+              {
+                 buttons: [
+                   { id: '41', render_data: { label: '开启弯曲', style: 0 }, action: { type: 2, permission: { type: 2 }, data: '/pjsk.调整.文本曲线.开启', enter: true } },
+                   { id: '42', render_data: { label: '关闭弯曲', style: 0 }, action: { type: 2, permission: { type: 2 }, data: '/pjsk.调整.文本曲线.关闭', enter: true } }
+                 ]
+              }
+            ]
+          }
+        };
 
         session['seq'] = session['seq'] || 0;
-        return await sendQQNativeMarkdown(session, ++session['seq'], md);
+        return await sendQQNativeMarkdown(session, ++session['seq'], md, keyboard);
       }
 
       return await sendMessage(session, `请使用以下指令调整表情包：
@@ -769,22 +788,44 @@ export function apply(ctx: Context, config: Config) {
         })
       }
       const buffer = await draw(text, imgPath, specifiedX, specifiedY, specifiedRotate, specifiedFontSize, color, curve, spaceSize, angle)
-      await session.send(h.image(buffer, 'image/png'));
+      
+      let tempUrl = '';
+      const tempService = (ctx as any).server?.temp || (ctx as any)['server.temp'];
+      if (session.platform === 'qq' && (config.enableQQNativeMarkdown || config.isEnableQQOfficialRobotMarkdownTemplate) && tempService) {
+        try {
+          const entry = await tempService.create(buffer);
+          tempUrl = entry.url;
+        } catch (e) {
+          logger.warn('Failed to upload image to server-temp:', e);
+        }
+      }
+
+      if (!tempUrl) {
+        await session.send(h.image(buffer, 'image/png'));
+      }
+
       if (session.platform === 'qq' && (config.enableQQNativeMarkdown || config.isEnableQQOfficialRobotMarkdownTemplate)) {
           session['seq'] = session['seq'] || 0;
           const msgSeq = ++session['seq'];
           
           if (options.showDashboard) {
-            await session.execute('pjsk.调整');
+            await session.execute('pjsk.调整' + (tempUrl ? ` -u "${tempUrl}"` : ''));
             return;
           }
 
-          let trailingMd = ``;
-          trailingMd += `[[更改内容]](mqqapi://aio/inlinecmd?command=${encodeURIComponent('/pjsk.调整')}&reply=false&enter=true)   `;
-          trailingMd += `[[🎲 随机绘制]](mqqapi://aio/inlinecmd?command=${encodeURIComponent('/pjsk.绘制')}&reply=false&enter=true)   `;
-          trailingMd += `[[返回菜单]](mqqapi://aio/inlinecmd?command=${encodeURIComponent('/pjsk')}&reply=false&enter=true)`;
-
-          await sendQQNativeMarkdown(session, msgSeq, trailingMd);
+          let trailingMd = tempUrl ? `![image #296px #256px](${tempUrl})\n> 💡 绘制完成！接下来...` : `> 💡 绘制完成！接下来...`;
+          const keyboard = {
+            content: {
+              rows: [{
+                buttons: [
+                  { id: '1', render_data: { label: '更改内容', style: 1 }, action: { type: 2, permission: { type: 2 }, data: '/pjsk.调整', enter: true } },
+                  { id: '2', render_data: { label: '随机绘制', style: 0 }, action: { type: 2, permission: { type: 2 }, data: '/pjsk.绘制', enter: true } },
+                  { id: '3', render_data: { label: '返回菜单', style: 0 }, action: { type: 2, permission: { type: 2 }, data: '/pjsk', enter: true } }
+                ]
+              }]
+            }
+          };
+          await sendQQNativeMarkdown(session, msgSeq, trailingMd, keyboard);
           return;
       } else {
          if (config.shouldSendSuccessMessageAfterDrawingEmoji) {
@@ -1398,14 +1439,17 @@ export function apply(ctx: Context, config: Config) {
     return `\n\n> 💡 快捷操作：\n` + links.map(link => `> ${link}`).join('\n');
   }
 
-    async function sendQQNativeMarkdown(session: any, msgSeq: number, markdownContent: string) {
-    const payload = {
+    async function sendQQNativeMarkdown(session: any, msgSeq: number, markdownContent: string, keyboardPayload?: any) {
+    const payload: any = {
       msg_type: 2 as const,
       msg_id: session.messageId,
       msg_seq: msgSeq,
       content: 'PJSK 呈现',
       markdown: { content: markdownContent }
     };
+    if (keyboardPayload) {
+      payload.keyboard = keyboardPayload;
+    }
     try {
       if (session.isDirect) {
         await session.qq.sendPrivateMessage(session.channelId, payload);
