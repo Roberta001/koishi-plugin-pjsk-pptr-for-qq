@@ -207,7 +207,7 @@ export function apply(ctx: Context, config: Config) {
   const characters = JSON.parse(fs.readFileSync(path.join(__dirname, '../assets', 'characters.json'), 'utf8'))
 
   // pjsk* h* bz*
-  const baseCdn = 'https://pjsk.vocaloid.world/';
+  const baseCdn = 'https://pjsk.moe/sticker-maker/img/';
 
   ctx.command('pjsk', '初音未来表情包生成帮助')
     .example('pjsk')
@@ -648,7 +648,7 @@ export function apply(ctx: Context, config: Config) {
         return await sendMessage(session, `请输入有效的表情 ID！`, `随机绘制 自选绘制`)
       }
       if (characterId < 0 || characterId >= characters.length) {
-        return await sendMessage(session, `抱歉，您输入的表情 ID 无效，请输入范围在 0 到 358 之间的有效表情 ID。`, `修改角色 随机角色`)
+        return await sendMessage(session, `抱歉，您输入的表情 ID 无效，请输入范围在 0 到 ${characters.length - 1} 之间的有效表情 ID。`, `修改角色 随机角色`)
       }
       const userRecord = await ctx.database.get('pjsk', {userId: session.userId})
       if (userRecord.length === 0) {
